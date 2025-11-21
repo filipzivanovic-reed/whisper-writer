@@ -43,10 +43,13 @@ class WhisperWriterApp(QObject):
         Initialize the components of the application.
         """
         self.input_simulator = InputSimulator()
+        self.file_output_mode = False
 
         self.key_listener = KeyListener()
         self.key_listener.add_callback("on_activate", self.on_activation)
         self.key_listener.add_callback("on_deactivate", self.on_deactivation)
+        self.key_listener.add_callback("on_file_output_activate", self.on_file_output_activation)
+        self.key_listener.add_callback("on_file_output_deactivate", self.on_file_output_deactivation)
 
         model_options = ConfigManager.get_config_section('model_options')
         model_path = model_options.get('local', {}).get('model_path')
@@ -141,6 +144,29 @@ class WhisperWriterApp(QObject):
             if self.result_thread and self.result_thread.isRunning():
                 self.result_thread.stop_recording()
 
+    def on_file_output_activation(self):
+        """
+        Called when the file output activation key combination is pressed.
+        """
+        if self.result_thread and self.result_thread.isRunning():
+            recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
+            if recording_mode == 'press_to_toggle':
+                self.result_thread.stop_recording()
+            elif recording_mode == 'continuous':
+                self.stop_result_thread()
+            return
+
+        self.file_output_mode = True
+        self.start_result_thread()
+
+    def on_file_output_deactivation(self):
+        """
+        Called when the file output activation key combination is released.
+        """
+        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
+            if self.result_thread and self.result_thread.isRunning():
+                self.result_thread.stop_recording()
+
     def start_result_thread(self):
         """
         Start the result thread to record audio and transcribe it.
@@ -164,9 +190,25 @@ class WhisperWriterApp(QObject):
 
     def on_transcription_complete(self, result):
         """
-        When the transcription is complete, type the result and start listening for the activation key again.
+        When the transcription is complete, either type the result (keyboard) or write to file.
         """
-        self.input_simulator.typewrite(result)
+        if self.file_output_mode:
+            # Write to file instead of typing
+            output_file = os.getenv('WHISPER_OUTPUT_FILE')
+            if output_file and output_file != 'null':
+                try:
+                    with open(output_file, 'w') as f:
+                        f.write(result)
+                    if ConfigManager.get_config_value('misc', 'print_to_terminal'):
+                        print(f"Transcription written to {output_file}: {result}")
+                except Exception as e:
+                    print(f"Error writing to file {output_file}: {e}")
+            else:
+                print("WHISPER_OUTPUT_FILE not set or is null. Transcription: " + result)
+            self.file_output_mode = False
+        else:
+            # Type the result using keyboard simulation
+            self.input_simulator.typewrite(result)
 
         if ConfigManager.get_config_value('misc', 'noise_on_completion'):
             AudioPlayer(os.path.join('assets', 'beep.wav')).play(block=True)

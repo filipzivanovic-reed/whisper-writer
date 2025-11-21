@@ -281,9 +281,12 @@ class KeyListener:
         self.backends = []
         self.active_backend = None
         self.key_chord = None
+        self.file_output_key_chord = None
         self.callbacks = {
             "on_activate": [],
-            "on_deactivate": []
+            "on_deactivate": [],
+            "on_file_output_activate": [],
+            "on_file_output_deactivate": []
         }
         self.load_activation_keys()
         self.initialize_backends()
@@ -357,6 +360,11 @@ class KeyListener:
         keys = self.parse_key_combination(key_combination)
         self.set_activation_keys(keys)
 
+        # Load file output activation key
+        file_output_combination = ConfigManager.get_config_value('recording_options', 'file_output_activation_key')
+        file_output_keys = self.parse_key_combination(file_output_combination)
+        self.set_file_output_activation_keys(file_output_keys)
+
     def parse_key_combination(self, combination_string: str) -> Set[KeyCode | frozenset[KeyCode]]:
         """Parse a string representation of key combination into a set of KeyCodes."""
         keys = set()
@@ -383,20 +391,36 @@ class KeyListener:
         """Set the activation keys for the KeyChord."""
         self.key_chord = KeyChord(keys)
 
+    def set_file_output_activation_keys(self, keys: Set[KeyCode]):
+        """Set the file output activation keys for the KeyChord."""
+        self.file_output_key_chord = KeyChord(keys)
+
     def on_input_event(self, event):
         """Handle input events and trigger callbacks if the key chord becomes active or inactive."""
-        if not self.key_chord or not self.active_backend:
+        if not self.active_backend:
             return
 
         key, event_type = event
 
-        was_active = self.key_chord.is_active()
-        is_active = self.key_chord.update(key, event_type)
+        # Handle primary activation key
+        if self.key_chord:
+            was_active = self.key_chord.is_active()
+            is_active = self.key_chord.update(key, event_type)
 
-        if not was_active and is_active:
-            self._trigger_callbacks("on_activate")
-        elif was_active and not is_active:
-            self._trigger_callbacks("on_deactivate")
+            if not was_active and is_active:
+                self._trigger_callbacks("on_activate")
+            elif was_active and not is_active:
+                self._trigger_callbacks("on_deactivate")
+
+        # Handle file output activation key
+        if self.file_output_key_chord:
+            was_file_active = self.file_output_key_chord.is_active()
+            is_file_active = self.file_output_key_chord.update(key, event_type)
+
+            if not was_file_active and is_file_active:
+                self._trigger_callbacks("on_file_output_activate")
+            elif was_file_active and not is_file_active:
+                self._trigger_callbacks("on_file_output_deactivate")
 
     def add_callback(self, event: str, callback: Callable):
         """Add a callback function for a specific event."""
@@ -411,6 +435,10 @@ class KeyListener:
     def update_activation_keys(self):
         """Update activation keys from the current configuration."""
         self.load_activation_keys()
+
+    def get_file_output_key_chord(self):
+        """Get the file output key chord."""
+        return self.file_output_key_chord
 
 class EvdevBackend(InputBackend):
     """
