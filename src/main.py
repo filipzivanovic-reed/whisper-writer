@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from datetime import datetime
 from audioplayer import AudioPlayer
 from pynput.keyboard import Controller
 from PyQt5.QtCore import QObject, QProcess
@@ -43,13 +44,16 @@ class WhisperWriterApp(QObject):
         Initialize the components of the application.
         """
         self.input_simulator = InputSimulator()
-        self.file_output_mode = False
+        self.file_output_mode = False  # None = keyboard, "overwrite" = overwrite file, "append" = append to file
+        self.file_output_append_mode = False
 
         self.key_listener = KeyListener()
         self.key_listener.add_callback("on_activate", self.on_activation)
         self.key_listener.add_callback("on_deactivate", self.on_deactivation)
         self.key_listener.add_callback("on_file_output_activate", self.on_file_output_activation)
         self.key_listener.add_callback("on_file_output_deactivate", self.on_file_output_deactivation)
+        self.key_listener.add_callback("on_file_output_append_activate", self.on_file_output_append_activation)
+        self.key_listener.add_callback("on_file_output_append_deactivate", self.on_file_output_append_deactivation)
 
         model_options = ConfigManager.get_config_section('model_options')
         model_path = model_options.get('local', {}).get('model_path')
@@ -146,7 +150,7 @@ class WhisperWriterApp(QObject):
 
     def on_file_output_activation(self):
         """
-        Called when the file output activation key combination is pressed.
+        Called when the file output activation key combination is pressed (overwrite mode).
         """
         if self.result_thread and self.result_thread.isRunning():
             recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
@@ -156,12 +160,35 @@ class WhisperWriterApp(QObject):
                 self.stop_result_thread()
             return
 
-        self.file_output_mode = True
+        self.file_output_mode = "overwrite"
         self.start_result_thread()
 
     def on_file_output_deactivation(self):
         """
         Called when the file output activation key combination is released.
+        """
+        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
+            if self.result_thread and self.result_thread.isRunning():
+                self.result_thread.stop_recording()
+
+    def on_file_output_append_activation(self):
+        """
+        Called when the file output append activation key combination is pressed.
+        """
+        if self.result_thread and self.result_thread.isRunning():
+            recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
+            if recording_mode == 'press_to_toggle':
+                self.result_thread.stop_recording()
+            elif recording_mode == 'continuous':
+                self.stop_result_thread()
+            return
+
+        self.file_output_mode = "append"
+        self.start_result_thread()
+
+    def on_file_output_append_deactivation(self):
+        """
+        Called when the file output append activation key combination is released.
         """
         if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
             if self.result_thread and self.result_thread.isRunning():
@@ -197,10 +224,16 @@ class WhisperWriterApp(QObject):
             output_file = os.getenv('WHISPER_OUTPUT_FILE')
             if output_file and output_file != 'null':
                 try:
-                    with open(output_file, 'w') as f:
+                    mode = 'a' if self.file_output_mode == "append" else 'w'
+                    with open(output_file, mode) as f:
+                        if self.file_output_mode == "append":
+                            f.write('\n')
+                            timestamp = datetime.now().strftime("%H:%M")
+                            f.write(f"[{timestamp}] ")
                         f.write(result)
+                    action = "appended to" if self.file_output_mode == "append" else "written to"
                     if ConfigManager.get_config_value('misc', 'print_to_terminal'):
-                        print(f"Transcription written to {output_file}: {result}")
+                        print(f"Transcription {action} {output_file}: {result}")
                 except Exception as e:
                     print(f"Error writing to file {output_file}: {e}")
             else:

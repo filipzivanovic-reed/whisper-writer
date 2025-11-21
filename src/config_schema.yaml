@@ -93,7 +93,11 @@ recording_options:
   file_output_activation_key:
     value: ctrl+shift+f11
     type: str
-    description: "The keyboard shortcut to activate recording and save transcription directly to file. Separate keys with a '+'."
+    description: "The keyboard shortcut to activate recording and save transcription directly to file (overwrite mode). Separate keys with a '+'."
+  file_output_append_activation_key:
+    value: ctrl+shift+f10
+    type: str
+    description: "The keyboard shortcut to activate recording and append transcription to file. Separate keys with a '+'."
   input_backend:
     value: auto
     type: str
