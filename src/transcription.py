@@ -7,6 +7,27 @@ from openai import OpenAI
 
 from utils import ConfigManager
 
+def get_initial_prompt():
+    """
+    Get the initial prompt from either a file or the config string.
+    If initial_prompt_file is set, read and return file contents.
+    Otherwise, return the initial_prompt string value.
+    """
+    model_options = ConfigManager.get_config_section('model_options')
+    initial_prompt_file = model_options['common'].get('initial_prompt_file')
+
+    if initial_prompt_file and initial_prompt_file != 'null':
+        try:
+            with open(initial_prompt_file, 'r', encoding='utf-8') as f:
+                file_content = f.read().strip()
+                ConfigManager.console_print(f'Loaded initial prompt from file: {initial_prompt_file}')
+                return file_content
+        except Exception as e:
+            ConfigManager.console_print(f'Error reading initial prompt file {initial_prompt_file}: {e}')
+            ConfigManager.console_print('Falling back to initial_prompt string.')
+
+    return model_options['common'].get('initial_prompt')
+
 def create_local_model():
     """
     Create a local model using the faster-whisper library.
@@ -57,7 +78,7 @@ def transcribe_local(audio_data, local_model=None):
 
     response = local_model.transcribe(audio=audio_data_float,
                                       language=model_options['common']['language'],
-                                      initial_prompt=model_options['common']['initial_prompt'],
+                                      initial_prompt=get_initial_prompt(),
                                       condition_on_previous_text=model_options['local']['condition_on_previous_text'],
                                       temperature=model_options['common']['temperature'],
                                       vad_filter=model_options['local']['vad_filter'],)
@@ -83,7 +104,7 @@ def transcribe_api(audio_data):
         model=model_options['api']['model'],
         file=('audio.wav', byte_io, 'audio/wav'),
         language=model_options['common']['language'],
-        prompt=model_options['common']['initial_prompt'],
+        prompt=get_initial_prompt(),
         temperature=model_options['common']['temperature'],
     )
     return response.text

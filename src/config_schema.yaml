@@ -19,6 +19,10 @@ model_options:
       value: null
       type: str
       description: "A string used as an initial prompt to condition the transcription. More info: https://platform.openai.com/docs/guides/speech-to-text/prompting"
+    initial_prompt_file:
+      value: null
+      type: str
+      description: "Path to a file containing the initial prompt. If set, overrides initial_prompt."
 
   # Configuration options for the OpenAI API
   api:
@@ -72,7 +76,7 @@ model_options:
         - float16
         - int8
     condition_on_previous_text:
-      value: true
+      value: false
       type: bool
       description: "Set to true to use the previously transcribed text as a prompt for the next transcription request."
     vad_filter:

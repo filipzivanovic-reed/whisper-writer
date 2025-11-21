@@ -25,7 +25,7 @@ class WhisperWriterApp(QObject):
         """
         super().__init__()
         self.app = QApplication(sys.argv)
-        self.app.setWindowIcon(QIcon(os.path.join('assets', 'ww-logo.png')))
+        self.app.setWindowIcon(QIcon(os.path.join("assets", "ww-logo.png")))
 
         ConfigManager.initialize()
 
@@ -36,7 +36,7 @@ class WhisperWriterApp(QObject):
         if ConfigManager.config_file_exists():
             self.initialize_components()
         else:
-            print('No valid configuration file found. Opening settings window...')
+            print("No valid configuration file found. Opening settings window...")
             self.settings_window.show()
 
     def initialize_components(self):
@@ -50,14 +50,24 @@ class WhisperWriterApp(QObject):
         self.key_listener = KeyListener()
         self.key_listener.add_callback("on_activate", self.on_activation)
         self.key_listener.add_callback("on_deactivate", self.on_deactivation)
-        self.key_listener.add_callback("on_file_output_activate", self.on_file_output_activation)
-        self.key_listener.add_callback("on_file_output_deactivate", self.on_file_output_deactivation)
-        self.key_listener.add_callback("on_file_output_append_activate", self.on_file_output_append_activation)
-        self.key_listener.add_callback("on_file_output_append_deactivate", self.on_file_output_append_deactivation)
+        self.key_listener.add_callback(
+            "on_file_output_activate", self.on_file_output_activation
+        )
+        self.key_listener.add_callback(
+            "on_file_output_deactivate", self.on_file_output_deactivation
+        )
+        self.key_listener.add_callback(
+            "on_file_output_append_activate", self.on_file_output_append_activation
+        )
+        self.key_listener.add_callback(
+            "on_file_output_append_deactivate", self.on_file_output_append_deactivation
+        )
 
-        model_options = ConfigManager.get_config_section('model_options')
-        model_path = model_options.get('local', {}).get('model_path')
-        self.local_model = create_local_model() if not model_options.get('use_api') else None
+        model_options = ConfigManager.get_config_section("model_options")
+        model_path = model_options.get("local", {}).get("model_path")
+        self.local_model = (
+            create_local_model() if not model_options.get("use_api") else None
+        )
 
         self.result_thread = None
 
@@ -66,7 +76,7 @@ class WhisperWriterApp(QObject):
         self.main_window.startListening.connect(self.key_listener.start)
         self.main_window.closeApp.connect(self.exit_app)
 
-        if not ConfigManager.get_config_value('misc', 'hide_status_window'):
+        if not ConfigManager.get_config_value("misc", "hide_status_window"):
             self.status_window = StatusWindow()
 
         self.create_tray_icon()
@@ -76,19 +86,21 @@ class WhisperWriterApp(QObject):
         """
         Create the system tray icon and its context menu.
         """
-        self.tray_icon = QSystemTrayIcon(QIcon(os.path.join('assets', 'ww-logo.png')), self.app)
+        self.tray_icon = QSystemTrayIcon(
+            QIcon(os.path.join("assets", "ww-logo.png")), self.app
+        )
 
         tray_menu = QMenu()
 
-        show_action = QAction('WhisperWriter Main Menu', self.app)
+        show_action = QAction("WhisperWriter Main Menu", self.app)
         show_action.triggered.connect(self.main_window.show)
         tray_menu.addAction(show_action)
 
-        settings_action = QAction('Open Settings', self.app)
+        settings_action = QAction("Open Settings", self.app)
         settings_action.triggered.connect(self.settings_window.show)
         tray_menu.addAction(settings_action)
 
-        exit_action = QAction('Exit', self.app)
+        exit_action = QAction("Exit", self.app)
         exit_action.triggered.connect(self.exit_app)
         tray_menu.addAction(exit_action)
 
@@ -118,11 +130,11 @@ class WhisperWriterApp(QObject):
         """
         If settings is closed without saving on first run, initialize the components with default values.
         """
-        if not os.path.exists(os.path.join('src', 'config.yaml')):
+        if not os.path.exists(os.path.join("src", "config.yaml")):
             QMessageBox.information(
                 self.settings_window,
-                'Using Default Values',
-                'Settings closed without saving. Default values are being used.'
+                "Using Default Values",
+                "Settings closed without saving. Default values are being used.",
             )
             self.initialize_components()
 
@@ -131,10 +143,12 @@ class WhisperWriterApp(QObject):
         Called when the activation key combination is pressed.
         """
         if self.result_thread and self.result_thread.isRunning():
-            recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
-            if recording_mode == 'press_to_toggle':
+            recording_mode = ConfigManager.get_config_value(
+                "recording_options", "recording_mode"
+            )
+            if recording_mode == "press_to_toggle":
                 self.result_thread.stop_recording()
-            elif recording_mode == 'continuous':
+            elif recording_mode == "continuous":
                 self.stop_result_thread()
             return
 
@@ -144,7 +158,10 @@ class WhisperWriterApp(QObject):
         """
         Called when the activation key combination is released.
         """
-        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
+        if (
+            ConfigManager.get_config_value("recording_options", "recording_mode")
+            == "hold_to_record"
+        ):
             if self.result_thread and self.result_thread.isRunning():
                 self.result_thread.stop_recording()
 
@@ -153,10 +170,12 @@ class WhisperWriterApp(QObject):
         Called when the file output activation key combination is pressed (overwrite mode).
         """
         if self.result_thread and self.result_thread.isRunning():
-            recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
-            if recording_mode == 'press_to_toggle':
+            recording_mode = ConfigManager.get_config_value(
+                "recording_options", "recording_mode"
+            )
+            if recording_mode == "press_to_toggle":
                 self.result_thread.stop_recording()
-            elif recording_mode == 'continuous':
+            elif recording_mode == "continuous":
                 self.stop_result_thread()
             return
 
@@ -167,7 +186,10 @@ class WhisperWriterApp(QObject):
         """
         Called when the file output activation key combination is released.
         """
-        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
+        if (
+            ConfigManager.get_config_value("recording_options", "recording_mode")
+            == "hold_to_record"
+        ):
             if self.result_thread and self.result_thread.isRunning():
                 self.result_thread.stop_recording()
 
@@ -176,10 +198,12 @@ class WhisperWriterApp(QObject):
         Called when the file output append activation key combination is pressed.
         """
         if self.result_thread and self.result_thread.isRunning():
-            recording_mode = ConfigManager.get_config_value('recording_options', 'recording_mode')
-            if recording_mode == 'press_to_toggle':
+            recording_mode = ConfigManager.get_config_value(
+                "recording_options", "recording_mode"
+            )
+            if recording_mode == "press_to_toggle":
                 self.result_thread.stop_recording()
-            elif recording_mode == 'continuous':
+            elif recording_mode == "continuous":
                 self.stop_result_thread()
             return
 
@@ -190,7 +214,10 @@ class WhisperWriterApp(QObject):
         """
         Called when the file output append activation key combination is released.
         """
-        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'hold_to_record':
+        if (
+            ConfigManager.get_config_value("recording_options", "recording_mode")
+            == "hold_to_record"
+        ):
             if self.result_thread and self.result_thread.isRunning():
                 self.result_thread.stop_recording()
 
@@ -202,7 +229,7 @@ class WhisperWriterApp(QObject):
             return
 
         self.result_thread = ResultThread(self.local_model)
-        if not ConfigManager.get_config_value('misc', 'hide_status_window'):
+        if not ConfigManager.get_config_value("misc", "hide_status_window"):
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
         self.result_thread.resultSignal.connect(self.on_transcription_complete)
@@ -221,32 +248,41 @@ class WhisperWriterApp(QObject):
         """
         if self.file_output_mode:
             # Write to file instead of typing
-            output_file = os.getenv('WHISPER_OUTPUT_FILE')
-            if output_file and output_file != 'null':
+            output_file = os.getenv("WHISPER_OUTPUT_FILE")
+            if output_file and output_file != "null":
                 try:
-                    mode = 'a' if self.file_output_mode == "append" else 'w'
+                    mode = "a" if self.file_output_mode == "append" else "w"
                     with open(output_file, mode) as f:
                         if self.file_output_mode == "append":
-                            f.write('\n')
+                            f.write("\n\n")
                             timestamp = datetime.now().strftime("%H:%M")
                             f.write(f"[{timestamp}] ")
                         f.write(result)
-                    action = "appended to" if self.file_output_mode == "append" else "written to"
-                    if ConfigManager.get_config_value('misc', 'print_to_terminal'):
+                    action = (
+                        "appended to"
+                        if self.file_output_mode == "append"
+                        else "written to"
+                    )
+                    if ConfigManager.get_config_value("misc", "print_to_terminal"):
                         print(f"Transcription {action} {output_file}: {result}")
                 except Exception as e:
                     print(f"Error writing to file {output_file}: {e}")
             else:
-                print("WHISPER_OUTPUT_FILE not set or is null. Transcription: " + result)
+                print(
+                    "WHISPER_OUTPUT_FILE not set or is null. Transcription: " + result
+                )
             self.file_output_mode = False
         else:
             # Type the result using keyboard simulation
             self.input_simulator.typewrite(result)
 
-        if ConfigManager.get_config_value('misc', 'noise_on_completion'):
-            AudioPlayer(os.path.join('assets', 'beep.wav')).play(block=True)
+        if ConfigManager.get_config_value("misc", "noise_on_completion"):
+            AudioPlayer(os.path.join("assets", "beep.wav")).play(block=True)
 
-        if ConfigManager.get_config_value('recording_options', 'recording_mode') == 'continuous':
+        if (
+            ConfigManager.get_config_value("recording_options", "recording_mode")
+            == "continuous"
+        ):
             self.start_result_thread()
         else:
             self.key_listener.start()
@@ -258,6 +294,6 @@ class WhisperWriterApp(QObject):
         sys.exit(self.app.exec_())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = WhisperWriterApp()
     app.run()
