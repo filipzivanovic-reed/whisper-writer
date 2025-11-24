@@ -253,7 +253,7 @@ class WhisperWriterApp(QObject):
                 try:
                     mode = "a" if self.file_output_mode == "append" else "w"
                     with open(output_file, mode) as f:
-                        timestamp = datetime.now().strftime("%H:%M")
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
                         if self.file_output_mode == "append":
                             f.write("\n\n")
                             f.write(f"[{timestamp}] ")
