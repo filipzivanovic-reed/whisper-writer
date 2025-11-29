@@ -242,10 +242,16 @@ class WhisperWriterApp(QObject):
         if self.result_thread and self.result_thread.isRunning():
             self.result_thread.stop()
 
-    def on_transcription_complete(self, result):
+    def on_transcription_complete(self, result, tags=None):
         """
         When the transcription is complete, either type the result (keyboard) or write to file.
+
+        :param result: The transcribed text
+        :param tags: List of matched tags (from tag detection)
         """
+        if tags is None:
+            tags = []
+
         if self.file_output_mode:
             # Write to file instead of typing
             output_file = os.getenv("WHISPER_OUTPUT_FILE")
@@ -254,11 +260,17 @@ class WhisperWriterApp(QObject):
                     mode = "a" if self.file_output_mode == "append" else "w"
                     with open(output_file, mode) as f:
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+                        # Format tags as [tag1] [tag2]
+                        tags_str = ""
+                        if tags:
+                            tags_str = " " + " ".join([f"[{tag}]" for tag in tags])
+
                         if self.file_output_mode == "append":
                             f.write("\n\n")
-                            f.write(f"[{timestamp}] ")
+                            f.write(f"[{timestamp}]{tags_str} ")
                         else:
-                            f.write(f"[{timestamp}] ")
+                            f.write(f"[{timestamp}]{tags_str} ")
                         f.write(result)
                     action = (
                         "appended to"

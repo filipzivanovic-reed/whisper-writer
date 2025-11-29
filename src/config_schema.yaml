@@ -163,6 +163,25 @@ post_processing:
       - ydotool
       - dotool
 
+# Tag options for automatic keyword-based tagging in file output
+tag_options:
+  enabled:
+    value: false
+    type: bool
+    description: "Enable automatic tagging based on keyword matching in transcriptions (file output only)."
+  tags:
+    value: {}
+    type: dict
+    description: "Dictionary mapping tag names to lists of keywords/phrases that trigger them. Example: {meeting: [scheduled, agenda], action: [todo, task]}"
+  case_sensitive:
+    value: false
+    type: bool
+    description: "Whether keyword matching should be case-sensitive."
+  match_whole_words:
+    value: true
+    type: bool
+    description: "Whether to match whole words only (vs substring matching)."
+
 # Miscellaneous settings
 misc:
   print_to_terminal:

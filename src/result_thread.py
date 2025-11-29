@@ -30,7 +30,7 @@ class ResultThread(QThread):
     """
 
     statusSignal = pyqtSignal(str)
-    resultSignal = pyqtSignal(str)
+    resultSignal = pyqtSignal(str, list)
 
     def __init__(self, local_model=None):
         """
@@ -85,7 +85,7 @@ class ResultThread(QThread):
 
             # Time the transcription process
             start_time = time.time()
-            result = transcribe(audio_data, self.local_model)
+            result, tags = transcribe(audio_data, self.local_model)
             end_time = time.time()
 
             transcription_time = end_time - start_time
@@ -95,12 +95,12 @@ class ResultThread(QThread):
                 return
 
             self.statusSignal.emit('idle')
-            self.resultSignal.emit(result)
+            self.resultSignal.emit(result, tags)
 
         except Exception as e:
             traceback.print_exc()
             self.statusSignal.emit('error')
-            self.resultSignal.emit('')
+            self.resultSignal.emit('', [])
         finally:
             self.stop_recording()
 

@@ -147,6 +147,38 @@ WhisperWriter uses a configuration file to customize its behaviour. To set up th
 - `remove_capitalization`: Set to `true` to convert the transcribed text to lowercase. (Default: `false`)
 - `input_method`: The method to use for simulating keyboard input. (Default: `pynput`)
 
+#### Tag Options
+Tag options allow you to automatically detect keywords in transcriptions and append tags to the file output. This is useful for categorizing and organizing transcriptions.
+
+- `enabled`: Set to `true` to enable automatic tagging based on keyword matching in transcriptions (file output only). (Default: `false`)
+- `tags`: A dictionary mapping tag names to lists of keywords/phrases that trigger them. Tags are only applied to file output mode. (Default: `{}`)
+  - Example: `{meeting: [scheduled, agenda, attendees], action: [todo, task, action item]}`
+- `case_sensitive`: Set to `true` for case-sensitive keyword matching. (Default: `false`)
+- `match_whole_words`: Set to `true` to match whole words only (vs substring matching). (Default: `true`)
+
+**How it works:**
+- When a transcription is completed in file output mode, the system checks if any keywords from your configured tags appear in the transcribed text.
+- If a keyword is found, the corresponding tag is applied (using OR logic - any matching keyword triggers the tag).
+- Tags are formatted as `[tag1] [tag2]` and appear after the timestamp but before the transcription text.
+
+**Example output:**
+With the following configuration:
+```yaml
+tag_options:
+  enabled: true
+  case_sensitive: false
+  match_whole_words: true
+  tags:
+    meeting: [scheduled, agenda, attendees]
+    action: [todo, task, action item]
+    decision: [decided, agreed, consensus]
+```
+
+Your file output will look like:
+```
+[2025-11-29 14:30] [meeting] [action] We decided to schedule the meeting with these action items.
+```
+
 #### Miscellaneous Options
 - `print_to_terminal`: Set to `true` to print the script status and transcribed text to the terminal. (Default: `true`)
 - `hide_status_window`: Set to `true` to hide the status window during operation. (Default: `false`)
