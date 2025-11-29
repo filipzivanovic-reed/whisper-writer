@@ -125,23 +125,64 @@ def post_process_transcription(transcription):
 
     return transcription
 
-def apply_tags(transcription):
+def apply_tags(transcription, active_context_tag=None):
     """
     Apply tags to transcription based on keyword matching in the tag_options config.
-    Returns: (transcription, matched_tags_list)
+    Returns: (transcription, matched_tags_list, new_context_tag)
+
+    :param transcription: The transcribed text
+    :param active_context_tag: The currently active context tag (if any)
+    :return: (transcription, matched_tags_list, new_context_tag)
+             new_context_tag is None (no change), 'clear' (clear context), or tag name
     """
     tag_options = ConfigManager.get_config_section('tag_options')
 
     if not tag_options.get('enabled', False):
-        return transcription, []
+        return transcription, [], None
 
-    tags_config = tag_options.get('tags', {})
     case_sensitive = tag_options.get('case_sensitive', False)
     match_whole_words = tag_options.get('match_whole_words', True)
-
-    matched_tags = []
     search_text = transcription if case_sensitive else transcription.lower()
 
+    matched_tags = []
+    new_context_tag = None
+
+    # Check for context tags FIRST
+    context_tags_config = tag_options.get('context_tags', {})
+    for tag_name, keywords in context_tags_config.items():
+        # Ensure keywords is a list
+        if not isinstance(keywords, list):
+            keywords = [keywords]
+
+        # Check if any keyword matches (OR logic)
+        for keyword in keywords:
+            search_keyword = keyword if case_sensitive else keyword.lower()
+
+            if match_whole_words:
+                # Use word boundary matching
+                pattern = r'\b' + re.escape(search_keyword) + r'\b'
+                if re.search(pattern, search_text):
+                    new_context_tag = tag_name  # This will be 'clear' or a context tag name
+                    break
+            else:
+                # Simple substring matching
+                if search_keyword in search_text:
+                    new_context_tag = tag_name
+                    break
+
+        if new_context_tag is not None:
+            break  # First context tag match wins
+
+    # Add context tag to matched tags
+    # If a new context tag was just triggered, add it (unless clearing)
+    if new_context_tag and new_context_tag != 'clear':
+        matched_tags.append(new_context_tag)
+    # Otherwise, add the currently active context tag (if any)
+    elif active_context_tag and new_context_tag != 'clear':
+        matched_tags.append(active_context_tag)
+
+    # Now check regular tags
+    tags_config = tag_options.get('tags', {})
     for tag_name, keywords in tags_config.items():
         # Ensure keywords is a list
         if not isinstance(keywords, list):
@@ -163,15 +204,20 @@ def apply_tags(transcription):
                     matched_tags.append(tag_name)
                     break  # Tag matched, move to next tag
 
-    return transcription, matched_tags
+    return transcription, matched_tags, new_context_tag
 
-def transcribe(audio_data, local_model=None):
+def transcribe(audio_data, local_model=None, active_context_tag=None):
     """
     Transcribe audio date using the OpenAI API or a local model, depending on config.
-    Returns: (transcription, matched_tags) tuple
+    Returns: (transcription, matched_tags, new_context_tag) tuple
+
+    :param audio_data: Audio data to transcribe
+    :param local_model: Local Whisper model (if applicable)
+    :param active_context_tag: Currently active context tag (if any)
+    :return: (transcription, matched_tags_list, new_context_tag)
     """
     if audio_data is None:
-        return '', []
+        return '', [], None
 
     if ConfigManager.get_config_value('model_options', 'use_api'):
         transcription = transcribe_api(audio_data)
@@ -179,7 +225,7 @@ def transcribe(audio_data, local_model=None):
         transcription = transcribe_local(audio_data, local_model)
 
     transcription = post_process_transcription(transcription)
-    transcription, matched_tags = apply_tags(transcription)
+    transcription, matched_tags, new_context_tag = apply_tags(transcription, active_context_tag)
 
-    return transcription, matched_tags
+    return transcription, matched_tags, new_context_tag
 

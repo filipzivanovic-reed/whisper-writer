@@ -181,6 +181,10 @@ tag_options:
     value: true
     type: bool
     description: "Whether to match whole words only (vs substring matching)."
+  context_tags:
+    value: {}
+    type: dict
+    description: "Dictionary mapping context tag names to lists of keywords that trigger them. Context tags persist across transcriptions until changed or cleared. Example: {work: [start work, work mode], meeting: [start meeting], clear: [clear context]}"
 
 # Miscellaneous settings
 misc:

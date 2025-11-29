@@ -30,16 +30,18 @@ class ResultThread(QThread):
     """
 
     statusSignal = pyqtSignal(str)
-    resultSignal = pyqtSignal(str, list)
+    resultSignal = pyqtSignal(str, list, object)  # text, tags, context_tag
 
-    def __init__(self, local_model=None):
+    def __init__(self, local_model=None, active_context_tag=None):
         """
         Initialize the ResultThread.
 
         :param local_model: Local transcription model (if applicable)
+        :param active_context_tag: Currently active context tag (if any)
         """
         super().__init__()
         self.local_model = local_model
+        self.active_context_tag = active_context_tag
         self.is_recording = False
         self.is_running = True
         self.sample_rate = None
@@ -85,7 +87,7 @@ class ResultThread(QThread):
 
             # Time the transcription process
             start_time = time.time()
-            result, tags = transcribe(audio_data, self.local_model)
+            result, tags, new_context_tag = transcribe(audio_data, self.local_model, self.active_context_tag)
             end_time = time.time()
 
             transcription_time = end_time - start_time
@@ -95,12 +97,12 @@ class ResultThread(QThread):
                 return
 
             self.statusSignal.emit('idle')
-            self.resultSignal.emit(result, tags)
+            self.resultSignal.emit(result, tags, new_context_tag)
 
         except Exception as e:
             traceback.print_exc()
             self.statusSignal.emit('error')
-            self.resultSignal.emit('', [])
+            self.resultSignal.emit('', [], None)
         finally:
             self.stop_recording()
 

@@ -148,18 +148,28 @@ WhisperWriter uses a configuration file to customize its behaviour. To set up th
 - `input_method`: The method to use for simulating keyboard input. (Default: `pynput`)
 
 #### Tag Options
-Tag options allow you to automatically detect keywords in transcriptions and append tags to the file output. This is useful for categorizing and organizing transcriptions.
+Tag options allow you to automatically detect keywords in transcriptions and append tags to the file output. This is useful for categorizing and organizing transcriptions. There are two types of tags: **regular tags** (applied per-transcription) and **context tags** (persistent across transcriptions).
 
+**Regular Tags:**
 - `enabled`: Set to `true` to enable automatic tagging based on keyword matching in transcriptions (file output only). (Default: `false`)
 - `tags`: A dictionary mapping tag names to lists of keywords/phrases that trigger them. Tags are only applied to file output mode. (Default: `{}`)
   - Example: `{meeting: [scheduled, agenda, attendees], action: [todo, task, action item]}`
+
+**Context Tags:**
+- `context_tags`: A dictionary mapping context tag names to lists of keywords that trigger them. Context tags persist across multiple transcriptions until changed or cleared. (Default: `{}`)
+  - Example: `{work: [start work, work mode], meeting: [start meeting], clear: [clear context, reset context]}`
+  - Context tags are useful for maintaining a persistent context throughout a working session (e.g., labeling all transcriptions as part of a "work" context until you switch to a "personal" context)
+  - Special keyword: Use a tag named `clear` with keywords to remove the active context
+
+**Matching Options:**
 - `case_sensitive`: Set to `true` for case-sensitive keyword matching. (Default: `false`)
 - `match_whole_words`: Set to `true` to match whole words only (vs substring matching). (Default: `true`)
 
 **How it works:**
-- When a transcription is completed in file output mode, the system checks if any keywords from your configured tags appear in the transcribed text.
-- If a keyword is found, the corresponding tag is applied (using OR logic - any matching keyword triggers the tag).
-- Tags are formatted as `[tag1] [tag2]` and appear after the timestamp but before the transcription text.
+- When a transcription is completed, the system first checks if any context tag keywords are matched. If found, the context tag is activated or changed.
+- Then the system checks if any regular tag keywords are matched.
+- Tags are formatted as `[context] [regular1] [regular2]` and appear after the timestamp but before the transcription text.
+- Context tags persist in memory until the app restarts or a new context tag is triggered.
 
 **Example output:**
 With the following configuration:
@@ -168,6 +178,10 @@ tag_options:
   enabled: true
   case_sensitive: false
   match_whole_words: true
+  context_tags:
+    work: [start work, work mode, begin work]
+    personal: [start personal, personal mode]
+    clear: [clear context, reset context]
   tags:
     meeting: [scheduled, agenda, attendees]
     action: [todo, task, action item]
@@ -176,7 +190,17 @@ tag_options:
 
 Your file output will look like:
 ```
-[2025-11-29 14:30] [meeting] [action] We decided to schedule the meeting with these action items.
+# User says "start work"
+[2025-11-29 14:30] [work] Starting my day
+
+# User mentions a meeting in next transcription
+[2025-11-29 14:31] [work] [meeting] [action] We need to schedule the team meeting
+
+# User says "start personal"
+[2025-11-29 14:35] [personal] Going to lunch
+
+# User says "clear context"
+[2025-11-29 14:40] Just a regular transcription with no context
 ```
 
 #### Miscellaneous Options

@@ -46,6 +46,7 @@ class WhisperWriterApp(QObject):
         self.input_simulator = InputSimulator()
         self.file_output_mode = False  # None = keyboard, "overwrite" = overwrite file, "append" = append to file
         self.file_output_append_mode = False
+        self.active_context_tag = None  # Persistent context tag across transcriptions
 
         self.key_listener = KeyListener()
         self.key_listener.add_callback("on_activate", self.on_activation)
@@ -228,7 +229,7 @@ class WhisperWriterApp(QObject):
         if self.result_thread and self.result_thread.isRunning():
             return
 
-        self.result_thread = ResultThread(self.local_model)
+        self.result_thread = ResultThread(self.local_model, self.active_context_tag)
         if not ConfigManager.get_config_value("misc", "hide_status_window"):
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
@@ -242,15 +243,22 @@ class WhisperWriterApp(QObject):
         if self.result_thread and self.result_thread.isRunning():
             self.result_thread.stop()
 
-    def on_transcription_complete(self, result, tags=None):
+    def on_transcription_complete(self, result, tags=None, new_context_tag=None):
         """
         When the transcription is complete, either type the result (keyboard) or write to file.
 
         :param result: The transcribed text
         :param tags: List of matched tags (from tag detection)
+        :param new_context_tag: New context tag signal ('clear', tag name, or None for no change)
         """
         if tags is None:
             tags = []
+
+        # Update context tag state
+        if new_context_tag == 'clear':
+            self.active_context_tag = None
+        elif new_context_tag is not None:
+            self.active_context_tag = new_context_tag
 
         if self.file_output_mode:
             # Write to file instead of typing
