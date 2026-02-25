@@ -1,3 +1,11 @@
+import ctypes
+
+try:
+    ctypes.WinDLL("C:\\Windows\\System32\\msvcp140.dll")
+    ctypes.WinDLL("C:\\Windows\\System32\\vcruntime140.dll")
+except Exception:
+    pass
+
 import os
 import sys
 import time
@@ -255,7 +263,7 @@ class WhisperWriterApp(QObject):
             tags = []
 
         # Update context tag state
-        if new_context_tag == 'clear':
+        if new_context_tag == "clear":
             self.active_context_tag = None
         elif new_context_tag is not None:
             self.active_context_tag = new_context_tag
